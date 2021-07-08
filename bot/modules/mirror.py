@@ -1,10 +1,15 @@
 from bot.helper.ext_utils.shortners import urlshortnners
 import requests
+from telegram.error import BadRequest
 from telegram.ext import CommandHandler
 from telegram import InlineKeyboardMarkup
 
-from bot import Interval, INDEX_URL, BUTTON_FOUR_NAME, BUTTON_FOUR_URL, BUTTON_FIVE_NAME, BUTTON_FIVE_URL, BUTTON_SIX_NAME, BUTTON_SIX_URL, BLOCK_MEGA_FOLDER, BLOCK_MEGA_LINKS, TAR_UNZIP_LIMIT, TUTORIAL_LINK, VIEW_LINK
-from bot import dispatcher, DOWNLOAD_DIR, DOWNLOAD_STATUS_UPDATE_INTERVAL, download_dict, download_dict_lock, SHORTENER, SHORTENER_API
+from bot import(
+    Interval, INDEX_URL, BUTTON_FOUR_NAME, BUTTON_FOUR_URL, BUTTON_FIVE_NAME, BUTTON_FIVE_URL,
+    BUTTON_SIX_NAME, BUTTON_SIX_URL, BLOCK_MEGA_FOLDER, BLOCK_MEGA_LINKS, TUTORIAL_LINK, VIEW_LINK,
+    dispatcher, DOWNLOAD_DIR, DOWNLOAD_STATUS_UPDATE_INTERVAL, download_dict, download_dict_lock,
+    SHORTENER, SHORTENER_API, TAR_UNZIP_LIMIT
+)
 from bot.helper.ext_utils import fs_utils, bot_utils
 from bot.helper.ext_utils.bot_utils import setInterval, get_mega_link_type
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException, NotSupportedExtractionArchive
@@ -223,8 +228,11 @@ class MirrorListener(listeners.MirrorListeners):
                 pass
             del download_dict[self.uid]
             count = len(download_dict)
-        sendMarkup(msg, self.bot, self.update,
-                   InlineKeyboardMarkup(buttons.build_menu(2)))
+        try:
+            sendMarkup(msg, self.bot, self.update,
+                       InlineKeyboardMarkup(buttons.build_menu(2)))
+        except BadRequest as e:
+            LOGGER.warning(e.message)
         if count == 0:
             self.clean()
         else:
@@ -369,6 +377,14 @@ def _mirror(bot, update, isTar=False, extract=False):
             mega_dl.add_download(
                 link, f'{DOWNLOAD_DIR}/{listener.uid}/', listener)
     else:
+        if link.startswith("https"):
+            resp = requests.head(link, allow_redirects=True)
+            if resp.headers["content-type"].startswith("text/html") and not resp.url.endswith(".torrent"):
+                sendMessage(
+                    "Provided link returned to a webpage, download aborted.",
+                    bot, update
+                )
+                return
         ariaDlManager.add_download(
             link, f'{DOWNLOAD_DIR}/{listener.uid}/', listener, name)
         sendStatusMessage(update, bot)

@@ -98,15 +98,14 @@ def get_progress_bar_string(status):
 
 
 def get_readable_message():
-    import reprlib
-    r = reprlib.Repr()
-    r.maxstring = 75
     botUptime = get_readable_time(time.time() - botStartTime)
     with download_dict_lock:
         msg = "✥═══════════════════════════✥"
         msg += f"\n⏰ Bot Uptime: <code>{botUptime}</code>"
         for download in list(download_dict.values()):
-            msg += f"<b>\n\n🗂 Filename : </b> <code>{r.repr(download.name())}</code>"
+            filename = download.name()
+            filename = filename[:50]+"..."+filename[-8:] if len(filename) > 58 else filename
+            msg += f"<b>\n\n🗂 Filename : </b> <code>{filename}</code>"
             msg += f"\n<b>🚦 Status : </b> <i>{download.status()}</i>"
             if download.status() != MirrorStatus.STATUS_ARCHIVING and download.status() != MirrorStatus.STATUS_EXTRACTING:
                 msg += f"\n<code>{get_progress_bar_string(download)}</code> {download.progress()}"
@@ -121,6 +120,11 @@ def get_readable_message():
                            f" | <b>🔄 Peers : </b> {download.aria_download().connections}"
                 except:
                     pass
+            if download.message.from_user.username:
+                uname = f'@{download.message.from_user.username}'
+            else:
+                uname = f'<a href="tg://user?id={download.message.from_user.id}">{download.message.from_user.first_name}</a>'    
+            msg += f'\n<b>🙍‍♂️ Downloader: {uname} ID:</b> <code>{download.message.from_user.id}</code>'
             if download.status() == MirrorStatus.STATUS_DOWNLOADING:
                 msg += f"\n<b>🚫 To Stop : </b> <code>/{BotCommands.CancelMirror} {download.gid()}</code>"
             msg += "\n"

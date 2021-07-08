@@ -1,6 +1,5 @@
 from bot.helper.ext_utils.shortners import urlshortnners
 import requests
-from telegram.error import BadRequest
 from telegram.ext import CommandHandler
 from telegram import InlineKeyboardMarkup
 
@@ -228,11 +227,8 @@ class MirrorListener(listeners.MirrorListeners):
                 pass
             del download_dict[self.uid]
             count = len(download_dict)
-        try:
-            sendMarkup(msg, self.bot, self.update,
-                       InlineKeyboardMarkup(buttons.build_menu(2)))
-        except BadRequest as e:
-            LOGGER.warning(e.message)
+        sendMarkup(msg, self.bot, self.update,
+                       InlineKeyboardMarkup(buttons.build_menu(2)))        
         if count == 0:
             self.clean()
         else:
@@ -377,14 +373,6 @@ def _mirror(bot, update, isTar=False, extract=False):
             mega_dl.add_download(
                 link, f'{DOWNLOAD_DIR}/{listener.uid}/', listener)
     else:
-        if link.startswith("https"):
-            resp = requests.head(link, allow_redirects=True)
-            if resp.headers["content-type"].startswith("text/html") and not resp.url.endswith(".torrent"):
-                sendMessage(
-                    "Provided link returned to a webpage, download aborted.",
-                    bot, update
-                )
-                return
         ariaDlManager.add_download(
             link, f'{DOWNLOAD_DIR}/{listener.uid}/', listener, name)
         sendStatusMessage(update, bot)
